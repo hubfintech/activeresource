@@ -1,5 +1,7 @@
-require 'active_support/core_ext/array/wrap'
-require 'active_support/core_ext/object/blank'
+# frozen_string_literal: true
+
+require "active_support/core_ext/array/wrap"
+require "active_support/core_ext/object/blank"
 
 module ActiveResource
   class ResourceInvalid < ClientError  #:nodoc:
@@ -33,11 +35,11 @@ module ActiveResource
     def from_hash(messages, save_cache = false)
       clear unless save_cache
 
-      messages.each do |(key,errors)|
+      messages.each do |(key, errors)|
         errors.each do |error|
           if @base.known_attributes.include?(key)
             add key, error
-          elsif key == 'base'
+          elsif key == "base"
             self[:base] << error
           else
             # reporting an error on an attribute not in attributes
@@ -50,12 +52,14 @@ module ActiveResource
 
     # Grabs errors from a json response.
     def from_json(json, save_cache = false)
-      decoded = ActiveSupport::JSON.decode(json) || {} rescue {}
-      if decoded.kind_of?(Hash) && (decoded.has_key?('errors') || decoded.empty?)
-        errors = decoded['errors'] || {}
+      decoded = @base.run_callbacks :parser do
+        ActiveSupport::JSON.decode(json) || {} rescue {}
+      end
+      if decoded.kind_of?(Hash) && (decoded.has_key?("errors") || decoded.empty?)
+        errors = decoded["errors"] || {}
         if errors.kind_of?(Array)
           # 3.2.1-style with array of strings
-          ActiveSupport::Deprecation.warn('Returning errors as an array of strings is deprecated.')
+          ActiveSupport::Deprecation.warn("Returning errors as an array of strings is deprecated.")
           from_array errors, save_cache
         else
           # 3.2.2+ style
@@ -70,7 +74,9 @@ module ActiveResource
 
     # Grabs errors from an XML response.
     def from_xml(xml, save_cache = false)
-      array = Array.wrap(Hash.from_xml(xml)['errors']['error']) rescue []
+      array = @base.run_callbacks :parser do
+        Array.wrap(Hash.from_xml(xml)['errors']['error']) rescue []
+      end
       from_array array, save_cache
     end
   end
@@ -100,12 +106,13 @@ module ActiveResource
     include ActiveModel::Validations
 
     included do
-      alias_method_chain :save, :validation
+      alias_method :save_without_validation, :save
+      alias_method :save, :save_with_validation
     end
 
     # Validate a resource and save (POST) it to the remote web service.
     # If any local validations fail - the save (POST) will not be attempted.
-    def save_with_validation(options={})
+    def save_with_validation(options = {})
       perform_validation = options[:validate] != false
 
       # clear the remote validations so they don't interfere with the local
@@ -130,7 +137,7 @@ module ActiveResource
 
     # Loads the set of remote errors into the object's Errors based on the
     # content-type of the error-block received.
-    def load_remote_errors(remote_errors, save_cache = false ) #:nodoc:
+    def load_remote_errors(remote_errors, save_cache = false) #:nodoc:
       case self.class.format
       when ActiveResource::Formats[:xml]
         errors.from_xml(remote_errors.response.body, save_cache)
