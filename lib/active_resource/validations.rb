@@ -52,9 +52,7 @@ module ActiveResource
 
     # Grabs errors from a json response.
     def from_json(json, save_cache = false)
-      decoded = @base.run_callbacks :parser do
-        ActiveSupport::JSON.decode(json) || {} rescue {}
-      end
+      decoded = ActiveSupport::JSON.decode(json) || {} rescue {}
       if decoded.kind_of?(Hash) && (decoded.has_key?("errors") || decoded.empty?)
         errors = decoded["errors"] || {}
         if errors.kind_of?(Array)
@@ -74,9 +72,7 @@ module ActiveResource
 
     # Grabs errors from an XML response.
     def from_xml(xml, save_cache = false)
-      array = @base.run_callbacks :parser do
-        Array.wrap(Hash.from_xml(xml)['errors']['error']) rescue []
-      end
+      array = Array.wrap(Hash.from_xml(xml)["errors"]["error"]) rescue []
       from_array array, save_cache
     end
   end
